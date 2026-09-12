@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schriftzeichenblatt-Generator</title>
+<style id="pageRule">@page { size: 210mm 297mm; margin: 0; }</style>
+<style>
+  :root {
+    --bg: #e9ecf0; --panel: #ffffff; --ink: #1d2330; --muted: #6b7280;
+    --line: #e3e6ea; --accent: #b3261e; --accent-ink: #ffffff; --soft: #f6f7f9;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; display: flex; overflow: hidden;
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink); background: var(--bg);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+
+  /* ---------- Einstellungsleiste ---------- */
+  #panel {
+    width: 400px; flex: none; background: var(--panel); border-right: 1px solid var(--line);
+    overflow-y: auto; padding: 16px 18px 48px;
+  }
+  #panel h1 { font-size: 17px; margin: 0 0 2px; letter-spacing: -.01em; }
+  #panel .sub { color: var(--muted); margin: 0 0 14px; }
+  details { border-top: 1px solid var(--line); padding: 10px 0 6px; }
+  details > summary {
+    cursor: pointer; font-weight: 600; font-size: 13.5px; list-style: none;
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸"; color: var(--muted); font-size: 11px; width: 10px; }
+  details[open] > summary::before { content: "▾"; }
+  .row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 8px; margin: 6px 0; }
+  .row > label { color: #374151; }
+  .row.full { grid-template-columns: 1fr; }
+  .check { display: flex; align-items: center; gap: 8px; margin: 6px 0; cursor: pointer; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; font: inherit; color: inherit; padding: 6px 8px;
+    border: 1px solid #d1d5db; border-radius: 6px; background: #fff;
+  }
+  input[type=color] { width: 100%; height: 30px; padding: 2px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; }
+  textarea {
+    min-height: 110px; resize: vertical;
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", "PingFang SC", serif; font-size: 20px; line-height: 1.45;
+  }
+  .hint { color: var(--muted); font-size: 12px; margin: 4px 0 6px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  button {
+    font: inherit; padding: 7px 12px; border-radius: 6px; border: 1px solid #d1d5db;
+    background: #fff; color: var(--ink); cursor: pointer;
+  }
+  button:hover { background: var(--soft); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+
+  /* Übersetzungstabelle */
+  #transTable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  #transTable th { text-align: left; font-weight: 600; color: var(--muted); padding: 4px 3px; border-bottom: 1px solid var(--line); }
+  #transTable td { padding: 3px; vertical-align: middle; }
+  #transTable td.tc { font-family: "Kaiti SC", "STKaiti", "KaiTi", serif; font-size: 22px; width: 32px; text-align: center; }
+  #transTable input { padding: 4px 6px; font-size: 12.5px; }
+  #transTable input.ov { background: #fff8e6; border-color: #e8c66a; }
+  #transTable td.p { width: 70px; }
+  #transTable button.reset { padding: 3px 7px; font-size: 12px; }
+  .tableWrap { max-height: 380px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; }
+  .legal { color: var(--muted); font-size: 11px; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .legal a { color: inherit; }
+
+  /* ---------- Vorschau ---------- */
+  #preview { flex: 1; overflow: auto; }
+  #topbar {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px; background: rgba(233,236,240,.92); backdrop-filter: blur(6px);
+    border-bottom: 1px solid #d9dde3;
+  }
+  #status { color: var(--muted); flex: 1; }
+  #status .warn { color: #a15c00; }
+  #pages { padding: 24px 20px 60px; }
+  .page {
+    background: #fff; margin: 0 auto 24px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 24px rgba(0,0,0,.06);
+    display: flex; flex-direction: column; overflow: hidden; color: #111;
+  }
+  .phead { display: flex; justify-content: space-between; align-items: flex-end; flex: none; }
+  .phead .ttl { font-size: 13pt; font-weight: 700; }
+  .phead .nd { font-size: 10pt; color: #333; white-space: nowrap; }
+  .phead .nd span { display: inline-block; border-bottom: 0.25mm solid #555; width: 38mm; margin: 0 4mm 0 1.5mm; }
+  .pbody { flex: 1; }
+  .pfoot { flex: none; text-align: right; font-size: 8.5pt; color: #777; }
+  .block svg { display: block; overflow: visible; }
+  .trans { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; margin-top: 1.2mm; }
+  .trans .lbl { font-size: .78em; font-weight: 700; letter-spacing: .04em; opacity: .7; margin-right: 1.2mm; }
+  .trans.inline .part + .part { margin-left: 6mm; }
+  .trans.stacked .part { display: block; }
+  .empty { text-align: center; color: var(--muted); padding: 40mm 10mm; font-size: 12pt; }
+  #measure, #mmRuler { position: absolute; left: -99999px; top: 0; visibility: hidden; }
+  #mmRuler { width: 100mm; height: 1px; }
+
+  @media print {
+    body { display: block; height: auto; overflow: visible; background: #fff; }
+    #panel, #topbar { display: none !important; }
+    #preview { overflow: visible; }
+    #pages { padding: 0; }
+    .page { margin: 0; box-shadow: none; break-after: page; page-break-after: always; }
+    .page:last-child { break-after: auto; page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<aside id="panel">
+  <h1>Schriftzeichenblatt-Generator</h1>
+  <p class="sub">Zeichen eingeben, Einstellungen anpassen, drucken.</p>
+
+  <details open>
+    <summary>Arbeitsblatt</summary>
+    <div class="row full"><input type="text" data-k="title" placeholder="Titel, z. B. Schriftzeichen: Unterrichtsverlauf-003"></div>
+    <div class="row full"><textarea data-k="chars" placeholder="Schriftzeichen hier eingeben oder einfügen, z. B. 爷奶外公婆"></textarea></div>
+    <div class="hint">Alles außer chinesischen Zeichen (Leerzeichen, Zeilenumbrüche, Satzzeichen, lateinische Buchstaben) wird ignoriert. Wörter wie 电脑 werden in einzelne Zeichen zerlegt.</div>
+    <label class="check"><input type="checkbox" data-k="dedupe"> Doppelte Zeichen nur einmal üben</label>
+    <div class="row"><label>Wiederholungen pro Zeichen</label><input type="number" min="1" max="10" data-k="repeat"></div>
+    <div class="row"><label>Gespeicherte Blätter</label><select id="sheetSel"></select></div>
+    <div class="btns">
+      <button id="sheetSave" title="Titel und Zeichen unter dem aktuellen Titel speichern">Blatt speichern</button>
+      <button id="sheetDel">Ausgewähltes löschen</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>Pinyin &amp; Übersetzungen bearbeiten (<span id="transCount">0</span>)</summary>
+    <div class="hint">Vorschläge kommen aus den Wörterbüchern. Geänderte Felder werden gelb markiert und für künftige Blätter gemerkt. ↺ setzt den Wörterbuchwert zurück.</div>
+    <div class="tableWrap">
+      <table id="transTable">
+        <thead><tr><th></th><th>Pinyin</th><th>Englisch</th><th>Deutsch</th><th></th></tr></thead>
+        <tbody id="transBody"></tbody>
+      </table>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Übungskästchen</summary>
+    <div class="row"><label>Kästchen pro Zeile</label><input type="number" min="5" max="18" data-k="cols"></div>
+    <div class="row"><label>Graue Nachzeichen-Kästchen</label><input type="number" min="0" max="40" data-k="traceCount"></div>
+    <div class="row"><label>Leere Übungszeilen</label><input type="number" min="0" max="15" data-k="emptyRows"></div>
+    <label class="check"><input type="checkbox" data-k="rowStartTrace"> Graues Zeichen am Anfang jeder Übungszeile</label>
+    <div class="hint">Die erste Zeile enthält das Musterzeichen, danach die grauen Nachzeichen-Kästchen und leere Kästchen. Darunter folgen die leeren Übungszeilen.</div>
+  </details>
+
+  <details>
+    <summary>Seite</summary>
+    <div class="row"><label>Papierformat</label>
+      <select data-k="paper"><option value="A4">A4 (210 × 297 mm)</option><option value="Letter">US Letter</option></select></div>
+    <div class="row"><label>Ausrichtung</label>
+      <select data-k="orient"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></div>
+    <div class="row"><label>Seitenrand (mm)</label><input type="number" min="5" max="30" data-k="margin"></div>
+    <div class="row"><label>Abstand zwischen Zeichen (mm)</label><input type="number" min="0" max="30" data-k="blockGap"></div>
+    <label class="check"><input type="checkbox" data-k="showTitle"> Titel oben auf jeder Seite</label>
+    <label class="check"><input type="checkbox" data-k="showNameDate"> Felder für Name und Datum</label>
+    <label class="check"><input type="checkbox" data-k="showPageNum"> Seitenzahlen</label>
+  </details>
+
+  <details>
+    <summary>Raster</summary>
+    <div class="row"><label>Rasterart</label>
+      <select data-k="gridStyle">
+        <option value="mi">Mi 米 (Kreuz + Diagonalen)</option>
+        <option value="tian">Tian 田 (Kreuz)</option>
+        <option value="none">Nur Kästchen</option>
+      </select></div>
+    <div class="row"><label>Farbe Kästchenlinien</label><input type="color" data-k="gridColor"></div>
+    <div class="row"><label>Farbe Hilfslinien</label><input type="color" data-k="guideColor"></div>
+  </details>
+
+  <details>
+    <summary>Pinyin</summary>
+    <label class="check"><input type="checkbox" data-k="pinyinShow"> Pinyin anzeigen</label>
+    <div class="row"><label>Farbe</label><input type="color" data-k="pinyinColor"></div>
+    <label class="check"><input type="checkbox" data-k="toneColors"> Stattdessen Tonfarben (1 rot · 2 grün · 3 blau · 4 lila)</label>
+  </details>
+
+  <details>
+    <summary>Strichreihenfolge</summary>
+    <label class="check"><input type="checkbox" data-k="strokeShow"> Strichreihenfolge anzeigen</label>
+    <div class="row"><label>Neuer Strich</label><input type="color" data-k="strokeCur"></div>
+    <div class="row"><label>Bereits geschrieben</label><input type="color" data-k="strokeDone"></div>
+    <div class="row"><label>Noch zu schreiben</label><input type="color" data-k="strokeTodo"></div>
+  </details>
+
+  <details>
+    <summary>Musterzeichen &amp; Radikal</summary>
+    <label class="check"><input type="checkbox" data-k="radicalShow"> Radikal farbig hervorheben</label>
+    <div class="row"><label>Farbe Radikal</label><input type="color" data-k="radicalColor"></div>
+    <div class="row"><label>Farbe übriges Zeichen</label><input type="color" data-k="restColor"></div>
+    <div class="row"><label>Zeichengröße im Kästchen (%)</label><input type="number" min="50" max="100" data-k="charScale"></div>
+  </details>
+
+  <details>
+    <summary>Nachzeichnen</summary>
+    <div class="row"><label>Farbe</label><input type="color" data-k="traceColor"></div>
+    <div class="row"><label>Darstellung</label>
+      <select data-k="traceStyle"><option value="fill">Gefüllt</option><option value="outline">Nur Umriss</option></select></div>
+  </details>
+
+  <details>
+    <summary>Übersetzung</summary>
+    <label class="check"><input type="checkbox" data-k="showEN"> Englisch anzeigen</label>
+    <label class="check"><input type="checkbox" data-k="showDE"> Deutsch anzeigen</label>
+    <div class="row"><label>Anordnung</label>
+      <select data-k="transLayout"><option value="inline">Nebeneinander</option><option value="stacked">Untereinander</option></select></div>
+    <div class="row"><label>Schriftgröße (pt)</label><input type="number" min="6" max="16" data-k="transSize"></div>
+    <div class="row"><label>Farbe</label><input type="color" data-k="transColor"></div>
+  </details>
+
+  <div class="btns" style="margin-top:14px">
+    <button id="resetAll">Einstellungen auf Standard zurücksetzen</button>
+  </div>
+
+  <div class="legal">
+    Strichdaten: <a href="https://github.com/chanind/hanzi-writer-data" target="_blank">hanzi-writer-data</a> / Make Me a Hanzi (in dieser Datei enthalten, kein Internet nötig) ·
+    Englisch: <a href="https://www.mdbg.net/chinese/dictionary?page=cedict" target="_blank">CC-CEDICT</a> (CC BY-SA 4.0) ·
+    Deutsch: <a href="https://handedict.zydeo.net/" target="_blank">HanDeDict</a> (CC BY-SA 3.0)
+  </div>
+</aside>
+
+<main id="preview">
+  <div id="topbar">
+    <div id="status">Bereit.</div>
+    <button class="primary" id="printBtn">Drucken / als PDF sichern</button>
+  </div>
+  <div id="pages"></div>
+</main>
+
+<div id="measure"></div>
+<div id="mmRuler"></div>
+
+<script id="zdata" type="application/octet-stream">__ZEICHENDATEN__</script>
+<script>
+'use strict';
+
+const DEFAULTS = {
+  title: 'Schriftzeichen',
+  chars: '爷奶外公婆',
+  dedupe: true, repeat: 1,
+  cols: 12, traceCount: 3, emptyRows: 2, rowStartTrace: false,
+  paper: 'A4', orient: 'portrait', margin: 12, blockGap: 4,
+  showTitle: true, showNameDate: true, showPageNum: true,
+  gridStyle: 'mi', gridColor: '#222222', guideColor: '#9a9a9a',
+  pinyinShow: true, pinyinColor: '#1f3fd1', toneColors: false,
+  strokeShow: true, strokeCur: '#e11d1d', strokeDone: '#222222', strokeTodo: '#dcdcdc',
+  radicalShow: true, radicalColor: '#e11d1d', restColor: '#444444', charScale: 84,
+  traceColor: '#bdbdbd', traceStyle: 'fill',
+  showEN: true, showDE: true, transLayout: 'inline', transSize: 9, transColor: '#555555',
+};
+const DATA_URL = ch => `https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/${encodeURIComponent(ch)}.json`;
+const HAN = /\p{Script=Han}/u;
+const TONE_COLORS = { 1: '#e30000', 2: '#1a9c1a', 3: '#1f3fd1', 4: '#8e24aa', 5: '#777777' };
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clamp = (v, a, b) => Math.min(b, Math.max(a, Number.isFinite(+v) ? +v : a));
+const fx = n => +n.toFixed(3);
+
+function load(k, def) { try { const v = localStorage.getItem('zb:' + k); return v ? JSON.parse(v) : def; } catch { return def; } }
+function save(k, v) { try { localStorage.setItem('zb:' + k, JSON.stringify(v)); } catch { /* Speicher nicht verfügbar */ } }
+
+let S = { ...DEFAULTS, ...load('settings', {}) };
+let overrides = load('overrides', {});
+let sheets = load('sheets', {});
+
+/* ---------- Zeichendaten ---------- */
+let dataWarning = '';      // Hinweis, falls die eingebauten Daten fehlen
+const cache = {};          // ch -> Daten | null (gibt es nicht) | false (Netzwerkfehler)
+async function getData(ch) {
+  if (cache[ch] !== undefined) return cache[ch];
+  const emb = window.STROKES && window.STROKES[ch];
+  if (emb) return (cache[ch] = { strokes: emb[0], radStrokes: emb[1] });
+  try {
+    const ls = localStorage.getItem('hwd:' + ch);
+    if (ls) return (cache[ch] = JSON.parse(ls));
+  } catch { /* ignorieren */ }
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(DATA_URL(ch), { signal: ctrl.signal }).finally(() => clearTimeout(t));
+    if (r.status === 404) return (cache[ch] = null);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    cache[ch] = d;
+    try { localStorage.setItem('hwd:' + ch, JSON.stringify(d)); } catch { /* voll */ }
+    return d;
+  } catch {
+    return (cache[ch] = false);
+  }
+}
+async function pool(items, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => {
+    while (i < items.length) await fn(items[i++]);
+  }));
+}
+
+function charList() {
+  let arr = [...(S.chars || '')].filter(c => HAN.test(c));
+  if (S.dedupe) arr = [...new Set(arr)];
+  return arr;
+}
+function info(ch) {
+  const d = (window.HANZI_DICT || {})[ch] || { p: '', pa: [], en: '', de: '' };
+  const o = overrides[ch] || {};
+  return {
+    p: o.p ?? d.p, en: o.en ?? d.en, de: o.de ?? d.de,
+    readings: [d.p, ...(d.pa || [])].filter(Boolean),
+  };
+}
+function toneOf(p) {
+  for (const c of p) {
+    if ('āēīōūǖ'.includes(c)) return 1;
+    if ('áéíóúǘ'.includes(c)) return 2;
+    if ('ǎěǐǒǔǚ'.includes(c)) return 3;
+    if ('àèìòùǜ'.includes(c)) return 4;
+  }
+  return 5;
+}
+
+/* ---------- Bedienelemente ---------- */
+function syncControls() {
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.dataset.k;
+    if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
+  });
+}
+function bindControls() {
+  document.querySelectorAll('[data-k]').forEach(el => {
+    const k = el.dataset.k;
+    const handler = () => {
+      S[k] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Number(el.value) : el.value;
+      save('settings', S);
+      if (k === 'chars' || k === 'dedupe') rebuildTable();
+      scheduleRender();
+    };
+    el.addEventListener('input', handler);
+    if (el.type === 'checkbox') el.addEventListener('change', handler);
+  });
+}
+
+function rebuildTable() {
+  const chars = [...new Set(charList())];
+  $('#transCount').textContent = chars.length;
+  $('#transBody').innerHTML = chars.map((ch, i) => {
+    const I = info(ch), o = overrides[ch] || {};
+    const cls = f => (f in o ? 'ov' : '');
+    return `<tr data-ch="${esc(ch)}">
+      <td class="tc">${esc(ch)}</td>
+      <td class="p"><input data-f="p" class="${cls('p')}" value="${esc(I.p)}" list="pl${i}">
+        <datalist id="pl${i}">${I.readings.map(p => `<option value="${esc(p)}">`).join('')}</datalist></td>
+      <td><input data-f="en" class="${cls('en')}" value="${esc(I.en)}"></td>
+      <td><input data-f="de" class="${cls('de')}" value="${esc(I.de)}"></td>
+      <td><button class="reset" title="Wörterbuchwert wiederherstellen">↺</button></td>
+    </tr>`;
+  }).join('');
+}
+$('#transBody').addEventListener('input', e => {
+  const inp = e.target.closest('input[data-f]'); if (!inp) return;
+  const ch = inp.closest('tr').dataset.ch, f = inp.dataset.f;
+  (overrides[ch] ||= {})[f] = inp.value;
+  inp.classList.add('ov');
+  save('overrides', overrides);
+  scheduleRender();
+});
+$('#transBody').addEventListener('click', e => {
+  const b = e.target.closest('button.reset'); if (!b) return;
+  delete overrides[b.closest('tr').dataset.ch];
+  save('overrides', overrides);
+  rebuildTable(); scheduleRender();
+});
+
+function refreshSheets(selected = '') {
+  const names = Object.keys(sheets).sort((a, b) => a.localeCompare(b, 'de'));
+  $('#sheetSel').innerHTML = `<option value="">${names.length ? '— Blatt laden —' : '— noch keine gespeichert —'}</option>` +
+    names.map(n => `<option ${n === selected ? 'selected' : ''} value="${esc(n)}">${esc(n)}</option>`).join('');
+}
+$('#sheetSel').addEventListener('change', e => {
+  const sh = sheets[e.target.value]; if (!sh) return;
+  S.title = sh.title; S.chars = sh.chars;
+  save('settings', S); syncControls(); rebuildTable(); scheduleRender();
+});
+$('#sheetSave').addEventListener('click', () => {
+  const name = (S.title || '').trim() || 'Ohne Titel';
+  sheets[name] = { title: S.title, chars: S.chars };
+  save('sheets', sheets); refreshSheets(name);
+  status(`Blatt „${name}“ gespeichert.`);
+});
+$('#sheetDel').addEventListener('click', () => {
+  const n = $('#sheetSel').value; if (!n) return;
+  if (!confirm(`Gespeichertes Blatt „${n}“ löschen?`)) return;
+  delete sheets[n]; save('sheets', sheets); refreshSheets();
+});
+$('#resetAll').addEventListener('click', () => {
+  if (!confirm('Alle Design-Einstellungen auf Standard zurücksetzen? (Titel und Zeichen bleiben erhalten.)')) return;
+  S = { ...DEFAULTS, title: S.title, chars: S.chars };
+  save('settings', S); syncControls(); scheduleRender();
+});
+$('#printBtn').addEventListener('click', () => window.print());
+
+function status(html) { $('#status').innerHTML = html; }
+
+/* ---------- Zeichnen ---------- */
+// Zeichen aus hanzi-writer-Daten (Koordinaten 0..1024, y nach oben) in ein Quadrat (x, y, s) zeichnen.
+function glyph(d, x, y, s, colorOf, style = 'fill', scale = 1) {
+  const inner = s * scale, off = (s - inner) / 2, k = inner / 1024;
+  let g = `<g transform="translate(${fx(x + off)},${fx(y + off)}) scale(${k.toFixed(6)}) translate(0,900) scale(1,-1)">`;
+  d.strokes.forEach((p, i) => {
+    const c = colorOf(i);
+    g += style === 'outline'
+      ? `<path d="${p}" fill="none" stroke="${c}" stroke-width="14" stroke-linejoin="round"/>`
+      : `<path d="${p}" fill="${c}"/>`;
+  });
+  return g + '</g>';
+}
+// Ersatz, wenn es für ein Zeichen keine Strichdaten gibt: Schrift statt Striche.
+function fontGlyph(ch, x, y, s, color, scale) {
+  const fs = s * scale * 0.95;
+  return `<text x="${fx(x + s / 2)}" y="${fx(y + s / 2 + fs * 0.36)}" font-size="${fx(fs)}" text-anchor="middle" fill="${color}"
+    font-family="'Kaiti SC','STKaiti','KaiTi','BiauKai','Songti SC',serif">${esc(ch)}</text>`;
+}
+
+function guides(x, y, s, style, color) {
+  if (style === 'none') return '';
+  const a = `stroke="${color}" stroke-width="0.16" stroke-dasharray="0.9 0.7" fill="none"`;
+  const cx = x + s / 2, cy = y + s / 2;
+  let g = `<line x1="${fx(x)}" y1="${fx(cy)}" x2="${fx(x + s)}" y2="${fx(cy)}" ${a}/>` +
+          `<line x1="${fx(cx)}" y1="${fx(y)}" x2="${fx(cx)}" y2="${fx(y + s)}" ${a}/>`;
+  if (style === 'mi') {
+    g += `<line x1="${fx(x)}" y1="${fx(y)}" x2="${fx(x + s)}" y2="${fx(y + s)}" ${a}/>` +
+         `<line x1="${fx(x + s)}" y1="${fx(y)}" x2="${fx(x)}" y2="${fx(y + s)}" ${a}/>`;
+  }
+  return g;
+}
+
+function makeBlock(ch, W) {
+  const d = cache[ch] || null;
+  const I = info(ch);
+  const cols = clamp(S.cols, 5, 18);
+  const box = W / cols;
+  const rows = 1 + clamp(S.emptyRows, 0, 15);
+  const scale = clamp(S.charScale, 50, 100) / 100;
+  const showHdr = S.pinyinShow || S.strokeShow;
+  const hdrH = showHdr ? box * 0.42 : 0;
+
+  // Kopfzeile: Strichfolge ggf. auf mehrere Zeilen umbrechen
+  const n = d ? d.strokes.length : 0;
+  const sSize = hdrH * 0.84, step = hdrH * 0.9;
+  const perRow = Math.max(1, Math.floor((W - box - hdrH * 0.2) / step));
+  const hRows = S.strokeShow && n ? Math.ceil(n / perRow) : 1;
+  const HH = showHdr ? hdrH * hRows : 0;
+  const H = HH + rows * box;
+  const line = `stroke="${S.gridColor}" stroke-width="0.3" fill="none"`;
+  const out = [];
+
+  // Hilfslinien in allen Kästchen
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) out.push(guides(c * box, HH + r * box, box, S.gridStyle, S.guideColor));
+
+  if (showHdr) {
+    // Pinyin-Feld mit gestrichelten Schreiblinien
+    const by = (HH - hdrH) / 2;
+    const dash = `stroke="${S.guideColor}" stroke-width="0.14" stroke-dasharray="0.9 0.7"`;
+    [0.25, 0.5, 0.75].forEach(f => out.push(`<line x1="0" y1="${fx(by + hdrH * f)}" x2="${fx(box)}" y2="${fx(by + hdrH * f)}" ${dash}/>`));
+    if (S.pinyinShow && I.p) {
+      let fs = hdrH * 0.6;
+      const est = [...I.p].length * fs * 0.55;
+      if (est > box * 0.92) fs *= box * 0.92 / est;
+      const col = S.toneColors ? TONE_COLORS[toneOf(I.p)] : S.pinyinColor;
+      out.push(`<text x="${fx(box / 2)}" y="${fx(by + hdrH * 0.73)}" font-size="${fx(fs)}" text-anchor="middle" fill="${col}"
+        font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="500">${esc(I.p)}</text>`);
+    }
+    // Strichreihenfolge
+    if (S.strokeShow && d) {
+      for (let k = 0; k < n; k++) {
+        const x = box + hdrH * 0.12 + (k % perRow) * step;
+        const y = Math.floor(k / perRow) * hdrH + (hdrH - sSize) / 2;
+        out.push(glyph(d, x, y, sSize, i => (i < k ? S.strokeDone : i === k ? S.strokeCur : S.strokeTodo)));
+      }
+    }
+  }
+
+  // Musterzeichen mit Radikal
+  const rad = new Set((d && d.radStrokes) || []);
+  out.push(d
+    ? glyph(d, 0, HH, box, i => (S.radicalShow && rad.has(i) ? S.radicalColor : S.restColor), 'fill', scale)
+    : fontGlyph(ch, 0, HH, box, S.restColor, scale));
+
+  // Graue Nachzeichen-Kästchen
+  const trace = (x, y) => d
+    ? glyph(d, x, y, box, () => S.traceColor, S.traceStyle, scale)
+    : fontGlyph(ch, x, y, box, S.traceColor, scale);
+  const tc = Math.min(clamp(S.traceCount, 0, 40), rows * cols - 1);
+  for (let k = 1; k <= tc; k++) out.push(trace((k % cols) * box, HH + Math.floor(k / cols) * box));
+  if (S.rowStartTrace) {
+    for (let r = 1; r < rows; r++) if (r * cols > tc) out.push(trace(0, HH + r * box));
+  }
+
+  // Durchgezogene Linien zuletzt, damit sie oben liegen
+  if (showHdr) {
+    out.push(`<rect x="0" y="0" width="${fx(W)}" height="${fx(HH)}" ${line}/>`);
+    out.push(`<line x1="${fx(box)}" y1="0" x2="${fx(box)}" y2="${fx(HH)}" ${line}/>`);
+  }
+  for (let r = 0; r <= rows; r++) out.push(`<line x1="0" y1="${fx(HH + r * box)}" x2="${fx(W)}" y2="${fx(HH + r * box)}" ${line}/>`);
+  for (let c = 0; c <= cols; c++) out.push(`<line x1="${fx(c * box)}" y1="${fx(HH)}" x2="${fx(c * box)}" y2="${fx(H)}" ${line}/>`);
+
+  const pad = 0.2;
+  const el = document.createElement('div');
+  el.className = 'block';
+  el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${fx(W)}mm" height="${fx(H + pad)}mm" viewBox="0 0 ${fx(W)} ${fx(H + pad)}">${out.join('')}</svg>`;
+
+  const parts = [];
+  if (S.showEN && I.en) parts.push(`<span class="part"><span class="lbl">EN</span>${esc(I.en)}</span>`);
+  if (S.showDE && I.de) parts.push(`<span class="part"><span class="lbl">DE</span>${esc(I.de)}</span>`);
+  if (parts.length) {
+    const t = document.createElement('div');
+    t.className = 'trans ' + (S.transLayout === 'stacked' ? 'stacked' : 'inline');
+    t.style.fontSize = clamp(S.transSize, 6, 16) + 'pt';
+    t.style.color = S.transColor;
+    t.innerHTML = parts.join('');
+    el.appendChild(t);
+  }
+  return el;
+}
+
+function pageSize() {
+  let [w, h] = S.paper === 'Letter' ? [215.9, 279.4] : [210, 297];
+  if (S.orient === 'landscape') [w, h] = [h, w];
+  return [w, h];
+}
+
+let renderSeq = 0, timer = null;
+function scheduleRender() { clearTimeout(timer); timer = setTimeout(render, 150); }
+
+async function render() {
+  const seq = ++renderSeq;
+  const list = charList();
+  const todo = [...new Set(list)].filter(c => cache[c] === undefined);
+  if (todo.length) {
+    let done = 0;
+    status(`Lade Strichdaten … 0/${todo.length}`);
+    await pool(todo, 6, async c => {
+      await getData(c); done++;
+      if (seq === renderSeq) status(`Lade Strichdaten … ${done}/${todo.length}`);
+    });
+  }
+  if (seq !== renderSeq) return;
+  const rep = clamp(S.repeat, 1, 10);
+  build(list.flatMap(c => Array(rep).fill(c)), list);
+}
+
+function build(items, list) {
+  const [pw, ph] = pageSize();
+  document.getElementById('pageRule').textContent = `@page { size: ${pw}mm ${ph}mm; margin: 0; }`;
+  const m = clamp(S.margin, 5, 30);
+  const W = pw - 2 * m;
+  const headH = S.showTitle || S.showNameDate ? 10 : 0;
+  const footH = S.showPageNum ? 5 : 0;
+  const availH = ph - 2 * m - headH - footH - 0.5;
+  const gap = clamp(S.blockGap, 0, 30);
+
+  // Blöcke unsichtbar aufbauen und ausmessen, dann auf Seiten verteilen
+  const meas = $('#measure');
+  meas.innerHTML = '';
+  meas.style.width = W + 'mm';
+  const blocks = items.map(ch => meas.appendChild(makeBlock(ch, W)));
+  const pxPerMm = $('#mmRuler').getBoundingClientRect().width / 100;
+  const pages = [];
+  let cur = [], used = 0;
+  for (const el of blocks) {
+    const h = el.getBoundingClientRect().height / pxPerMm;
+    const need = (cur.length ? gap : 0) + h;
+    if (cur.length && used + need > availH) { pages.push(cur); cur = []; used = 0; }
+    if (cur.length) el.style.marginTop = gap + 'mm';
+    used += (cur.length ? gap : 0) + h;
+    cur.push(el);
+  }
+  if (cur.length || !pages.length) pages.push(cur);
+
+  const host = $('#pages');
+  host.innerHTML = '';
+  pages.forEach((blks, i) => {
+    const pg = document.createElement('div');
+    pg.className = 'page';
+    Object.assign(pg.style, { width: pw + 'mm', height: (ph - 0.4) + 'mm', padding: m + 'mm' });
+    if (headH) {
+      pg.insertAdjacentHTML('beforeend', `<div class="phead" style="height:${headH}mm;padding-bottom:4mm">
+        <div class="ttl">${S.showTitle ? esc(S.title) : ''}</div>
+        <div class="nd">${S.showNameDate ? 'Name:<span></span>Datum:<span style="width:28mm;margin-right:0"></span>' : ''}</div></div>`);
+    }
+    const body = document.createElement('div');
+    body.className = 'pbody';
+    if (!blks.length) body.innerHTML = '<div class="empty">Gib links chinesische Schriftzeichen ein, dann erscheint hier dein Übungsblatt.</div>';
+    blks.forEach(b => body.appendChild(b));
+    pg.appendChild(body);
+    if (footH) pg.insertAdjacentHTML('beforeend', `<div class="pfoot" style="height:${footH}mm;padding-top:2mm">Seite ${i + 1} / ${pages.length}</div>`);
+    host.appendChild(pg);
+  });
+
+  // Statuszeile
+  const uniq = [...new Set(list)];
+  const missing = uniq.filter(c => cache[c] === null);
+  const netFail = uniq.filter(c => cache[c] === false);
+  let msg = dataWarning + `${uniq.length} Zeichen · ${items.length} Blöcke · ${pages.length} Seite${pages.length === 1 ? '' : 'n'}`;
+  if (missing.length) msg += ` · <span class="warn">Keine Strichdaten für ${esc(missing.join(' '))} (wird ohne Strichfolge gezeigt)</span>`;
+  if (netFail.length) msg += ` · <span class="warn">Keine Internetverbindung für ${esc(netFail.join(' '))} – <a href="#" id="retry">erneut versuchen</a></span>`;
+  status(msg);
+  const retry = $('#retry');
+  if (retry) retry.addEventListener('click', e => {
+    e.preventDefault();
+    Object.keys(cache).forEach(c => { if (cache[c] === false) delete cache[c]; });
+    render();
+  });
+}
+
+/* ---------- Start ---------- */
+// Wörterbuch und Strichdaten stecken komprimiert (gzip, base64) in dieser Datei.
+async function loadEmbedded() {
+  const el = document.getElementById('zdata');
+  const b64 = el ? el.textContent.trim() : '';
+  if (!b64 || b64.startsWith('__')) return;
+  if (typeof DecompressionStream === 'undefined') throw new Error('DecompressionStream fehlt');
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const data = JSON.parse(await new Response(stream).text());
+  window.HANZI_DICT = data.d;
+  window.STROKES = data.s;
+  el.remove();
+}
+
+(async () => {
+  syncControls();
+  bindControls();
+  refreshSheets();
+  status('Lade Zeichendaten …');
+  try { await loadEmbedded(); } catch (e) { console.error(e); }
+  if (!window.HANZI_DICT || !window.STROKES) {
+    dataWarning = '<span class="warn">Die eingebauten Zeichendaten konnten nicht geladen werden. Bitte öffne die Datei direkt in einem aktuellen Browser (Chrome, Safari, Edge oder Firefox), nicht in einer Vorschau.</span> · ';
+  }
+  rebuildTable();
+  render();
+})();
+</script>
+</body>
+</html>
