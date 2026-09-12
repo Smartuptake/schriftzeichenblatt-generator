@@ -25,6 +25,7 @@ Für jedes Zeichen gibt es einen Block:
 - Pinyin in Wunschfarbe oder in Tonfarben
 - Übersetzung Englisch und/oder Deutsch, nebeneinander oder untereinander
 - Papierformat (A4 / US Letter), Hoch- oder Querformat, Ränder
+- Logo oben in der Mitte der ersten Seite (Höhe einstellbar, abschaltbar)
 - Titel, Felder für Name und Datum, Seitenzahlen
 - Pinyin und Übersetzungen lassen sich pro Zeichen bearbeiten; die Änderungen merkt sich der Browser
 - Zeichenlisten lassen sich unter einem Namen speichern und wieder laden

@@ -13,6 +13,9 @@ here = pathlib.Path(__file__).parent
 template = (here / 'vorlage.html').read_text(encoding='utf-8')
 data = base64.b64encode((here / 'zeichendaten.json.gz').read_bytes()).decode('ascii')
 assert '__ZEICHENDATEN__' in template, 'Platzhalter __ZEICHENDATEN__ fehlt in vorlage.html'
+# Logo (logo.svg im selben Ordner) erscheint oben auf Seite 1; ohne Datei bleibt der Platz leer.
+logo_file = here / 'logo.svg'
+logo = logo_file.read_text(encoding='utf-8').strip() if logo_file.exists() else ''
 out = here.parent / (sys.argv[1] if len(sys.argv) > 1 else 'Schriftzeichenblatt.html')
-out.write_text(template.replace('__ZEICHENDATEN__', data), encoding='utf-8')
+out.write_text(template.replace('__LOGO_SVG__', logo).replace('__ZEICHENDATEN__', data), encoding='utf-8')
 print(f'{out.name} geschrieben: {out.stat().st_size / 1e6:.1f} MB')

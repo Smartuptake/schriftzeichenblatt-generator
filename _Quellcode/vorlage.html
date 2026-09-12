@@ -84,6 +84,8 @@
     background: #fff; margin: 0 auto 24px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 24px rgba(0,0,0,.06);
     display: flex; flex-direction: column; overflow: hidden; color: #111;
   }
+  .plogo { flex: none; display: flex; justify-content: center; }
+  .plogo svg { height: 100%; width: auto; display: block; }
   .phead { display: flex; justify-content: space-between; align-items: flex-end; flex: none; }
   .phead .ttl { font-size: 13pt; font-weight: 700; }
   .phead .nd { font-size: 10pt; color: #333; white-space: nowrap; }
@@ -157,6 +159,8 @@
       <select data-k="orient"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></div>
     <div class="row"><label>Seitenrand (mm)</label><input type="number" min="5" max="30" data-k="margin"></div>
     <div class="row"><label>Abstand zwischen Zeichen (mm)</label><input type="number" min="0" max="30" data-k="blockGap"></div>
+    <label class="check"><input type="checkbox" data-k="showLogo"> Logo oben auf der ersten Seite</label>
+    <div class="row"><label>Logo-Höhe (mm)</label><input type="number" min="10" max="60" data-k="logoSize"></div>
     <label class="check"><input type="checkbox" data-k="showTitle"> Titel oben auf jeder Seite</label>
     <label class="check"><input type="checkbox" data-k="showNameDate"> Felder für Name und Datum</label>
     <label class="check"><input type="checkbox" data-k="showPageNum"> Seitenzahlen</label>
@@ -236,6 +240,7 @@
 <div id="measure"></div>
 <div id="mmRuler"></div>
 
+<template id="logoTpl">__LOGO_SVG__</template>
 <script id="zdata" type="application/octet-stream">__ZEICHENDATEN__</script>
 <script>
 'use strict';
@@ -246,6 +251,7 @@ const DEFAULTS = {
   dedupe: true, repeat: 1,
   cols: 12, traceCount: 3, emptyRows: 2, rowStartTrace: false,
   paper: 'A4', orient: 'portrait', margin: 12, blockGap: 4,
+  showLogo: true, logoSize: 25,
   showTitle: true, showNameDate: true, showPageNum: true,
   gridStyle: 'mi', gridColor: '#222222', guideColor: '#9a9a9a',
   pinyinShow: true, pinyinColor: '#1f3fd1', toneColors: false,
@@ -565,6 +571,13 @@ function build(items, list) {
   const footH = S.showPageNum ? 5 : 0;
   const availH = ph - 2 * m - headH - footH - 0.5;
   const gap = clamp(S.blockGap, 0, 30);
+  // Logo nur auf Seite 1: nimmt dort Platz weg
+  const logoTpl = document.getElementById('logoTpl');
+  const logoHtml = logoTpl ? logoTpl.innerHTML.trim() : '';
+  const logoOn = S.showLogo && logoHtml.startsWith('<svg');
+  const logoH = logoOn ? clamp(S.logoSize, 10, 60) : 0;
+  const logoSpace = logoOn ? logoH + 3 : 0;
+  const capacity = pageIndex => availH - (pageIndex === 0 ? logoSpace : 0);
 
   // Blöcke unsichtbar aufbauen und ausmessen, dann auf Seiten verteilen
   const meas = $('#measure');
@@ -577,7 +590,7 @@ function build(items, list) {
   for (const el of blocks) {
     const h = el.getBoundingClientRect().height / pxPerMm;
     const need = (cur.length ? gap : 0) + h;
-    if (cur.length && used + need > availH) { pages.push(cur); cur = []; used = 0; }
+    if (cur.length && used + need > capacity(pages.length)) { pages.push(cur); cur = []; used = 0; }
     if (cur.length) el.style.marginTop = gap + 'mm';
     used += (cur.length ? gap : 0) + h;
     cur.push(el);
@@ -590,6 +603,9 @@ function build(items, list) {
     const pg = document.createElement('div');
     pg.className = 'page';
     Object.assign(pg.style, { width: pw + 'mm', height: (ph - 0.4) + 'mm', padding: m + 'mm' });
+    if (i === 0 && logoOn) {
+      pg.insertAdjacentHTML('beforeend', `<div class="plogo" style="height:${logoH}mm;margin-bottom:3mm">${logoHtml}</div>`);
+    }
     if (headH) {
       pg.insertAdjacentHTML('beforeend', `<div class="phead" style="height:${headH}mm;padding-bottom:4mm">
         <div class="ttl">${S.showTitle ? esc(S.title) : ''}</div>
