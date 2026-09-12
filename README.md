@@ -15,7 +15,7 @@ Für jedes Zeichen gibt es einen Block:
 - **Kopfzeile:** Pinyin (blau) und daneben die Strichreihenfolge Strich für Strich. Der neue Strich ist rot, die fertigen schwarz, die kommenden hellgrau.
 - **Erste Zeile:** Musterzeichen mit farbig hervorgehobenem Radikal (rot) und dunkelgrauem Rest. Danach folgen graue Zeichen zum Nachzeichnen und leere Kästchen.
 - **Übungszeilen:** leere Kästchen mit 米- oder 田-Raster.
-- **Darunter:** die Übersetzung auf Englisch und Deutsch.
+- **Darunter:** die Übersetzung auf Englisch, Deutsch und Französisch.
 
 ## Einstellungen
 
@@ -23,7 +23,7 @@ Für jedes Zeichen gibt es einen Block:
 - Wiederholungen pro Zeichen, doppelte Zeichen zusammenfassen
 - Rasterart (米 / 田 / leer) und alle Farben
 - Pinyin in Wunschfarbe oder in Tonfarben
-- Übersetzung Englisch und/oder Deutsch, nebeneinander oder untereinander
+- Übersetzung Englisch, Deutsch und/oder Französisch, nebeneinander oder untereinander
 - Papierformat (A4 / US Letter), Hoch- oder Querformat, Ränder
 - Logo oben in der Mitte der ersten Seite (Höhe einstellbar, abschaltbar)
 - Titel, Felder für Name und Datum, Seitenzahlen
@@ -44,6 +44,7 @@ Tipp: Die Datei im Browser öffnen (Chrome, Safari, Edge, Firefox), nicht in ein
 | Pinyin, Zeichenzerlegung | [Make Me a Hanzi](https://github.com/skishore/makemeahanzi) | siehe dortiges Projekt |
 | Englische Übersetzungen | [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cedict) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | Deutsche Übersetzungen | [HanDeDict](https://handedict.zydeo.net/) | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/de/) |
+| Französische Übersetzungen | [CFDICT](http://www.chine-informations.com) (Chine-Informations.com) | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
 
 Die daraus aufbereiteten Wörterbuchdaten (in `_Quellcode/zeichendaten.json.gz` und in `index.html`) stehen ebenfalls unter CC BY-SA. Mehr dazu in [`lizenzen/QUELLEN.md`](lizenzen/QUELLEN.md).
 

@@ -28,9 +28,23 @@ Der Schriftzeichenblatt-Generator enthält Daten aus diesen freien Projekten. Vi
 - Lizenz: **Creative Commons Namensnennung – Weitergabe unter gleichen Bedingungen 3.0**
   (CC BY-SA 3.0): https://creativecommons.org/licenses/by-sa/3.0/de/
 
+## Französische Übersetzungen
+
+- **CFDICT**, le dictionnaire chinois-français libre, von Chine-Informations.com (Gründer: David Houstin),
+  Version vom 10.09.2014: http://www.chine-informations.com
+- Verwendete Kopie: https://github.com/aure231/cfdict-fr
+- Lizenz: **Creative Commons Namensnennung – Weitergabe unter gleichen Bedingungen 3.0**
+  (CC BY-SA 3.0): https://creativecommons.org/licenses/by-sa/3.0/
+
 ## Bearbeitung
 
 Für die App wurden aus den Wörterbüchern nur die Einträge für einzelne Zeichen genommen und auf
 kurze Bedeutungen gekürzt (höchstens drei, Bedeutungen der Hauptaussprache bevorzugt). Für einige
 Partikel (的, 了, 吗, 呢, 吧) wurden deutsche Kurzbedeutungen von Hand ergänzt. Die aufbereiteten
 Daten stehen unter denselben Bedingungen (CC BY-SA).
+
+## Logo
+
+Das Logo „Mandarin Maverick – Fast Track Chinese“ (`_Quellcode/logo.svg`) gehört **nicht** zu den
+freien Lizenzen oben. Alle Rechte liegen bei Mandarin Maverick. Wer die App weiterverwendet, entfernt
+bitte das Logo oder ersetzt es durch ein eigenes.

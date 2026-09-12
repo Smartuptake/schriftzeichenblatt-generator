@@ -63,6 +63,7 @@
   #transTable td { padding: 3px; vertical-align: middle; }
   #transTable td.tc { font-family: "Kaiti SC", "STKaiti", "KaiTi", serif; font-size: 22px; width: 32px; text-align: center; }
   #transTable input { padding: 4px 6px; font-size: 12.5px; }
+  #transTable td:not(.p) input { min-width: 120px; }
   #transTable input.ov { background: #fff8e6; border-color: #e8c66a; }
   #transTable td.p { width: 70px; }
   #transTable button.reset { padding: 3px 7px; font-size: 12px; }
@@ -95,7 +96,8 @@
   .block svg { display: block; overflow: visible; }
   .trans { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; margin-top: 1.2mm; }
   .trans .lbl { font-size: .78em; font-weight: 700; letter-spacing: .04em; opacity: .7; margin-right: 1.2mm; }
-  .trans.inline .part + .part { margin-left: 6mm; }
+  .trans.inline { display: flex; flex-wrap: wrap; column-gap: 6mm; }
+  .trans.inline .part { white-space: nowrap; }
   .trans.stacked .part { display: block; }
   .empty { text-align: center; color: var(--muted); padding: 40mm 10mm; font-size: 12pt; }
   #measure, #mmRuler { position: absolute; left: -99999px; top: 0; visibility: hidden; }
@@ -136,7 +138,7 @@
     <div class="hint">Vorschläge kommen aus den Wörterbüchern. Geänderte Felder werden gelb markiert und für künftige Blätter gemerkt. ↺ setzt den Wörterbuchwert zurück.</div>
     <div class="tableWrap">
       <table id="transTable">
-        <thead><tr><th></th><th>Pinyin</th><th>Englisch</th><th>Deutsch</th><th></th></tr></thead>
+        <thead><tr><th></th><th>Pinyin</th><th>Englisch</th><th>Deutsch</th><th>Französisch</th><th></th></tr></thead>
         <tbody id="transBody"></tbody>
       </table>
     </div>
@@ -212,6 +214,7 @@
     <summary>Übersetzung</summary>
     <label class="check"><input type="checkbox" data-k="showEN"> Englisch anzeigen</label>
     <label class="check"><input type="checkbox" data-k="showDE"> Deutsch anzeigen</label>
+    <label class="check"><input type="checkbox" data-k="showFR"> Französisch anzeigen</label>
     <div class="row"><label>Anordnung</label>
       <select data-k="transLayout"><option value="inline">Nebeneinander</option><option value="stacked">Untereinander</option></select></div>
     <div class="row"><label>Schriftgröße (pt)</label><input type="number" min="6" max="16" data-k="transSize"></div>
@@ -258,7 +261,7 @@ const DEFAULTS = {
   strokeShow: true, strokeCur: '#e11d1d', strokeDone: '#222222', strokeTodo: '#dcdcdc',
   radicalShow: true, radicalColor: '#e11d1d', restColor: '#444444', charScale: 84,
   traceColor: '#bdbdbd', traceStyle: 'fill',
-  showEN: true, showDE: true, transLayout: 'inline', transSize: 9, transColor: '#555555',
+  showEN: true, showDE: true, showFR: true, transLayout: 'inline', transSize: 9, transColor: '#555555',
 };
 const DATA_URL = ch => `https://cdn.jsdelivr.net/npm/hanzi-writer-data@2.0.1/${encodeURIComponent(ch)}.json`;
 const HAN = /\p{Script=Han}/u;
@@ -314,10 +317,10 @@ function charList() {
   return arr;
 }
 function info(ch) {
-  const d = (window.HANZI_DICT || {})[ch] || { p: '', pa: [], en: '', de: '' };
+  const d = (window.HANZI_DICT || {})[ch] || { p: '', pa: [], en: '', de: '', fr: '' };
   const o = overrides[ch] || {};
   return {
-    p: o.p ?? d.p, en: o.en ?? d.en, de: o.de ?? d.de,
+    p: o.p ?? d.p, en: o.en ?? d.en, de: o.de ?? d.de, fr: o.fr ?? d.fr ?? '',
     readings: [d.p, ...(d.pa || [])].filter(Boolean),
   };
 }
@@ -364,6 +367,7 @@ function rebuildTable() {
         <datalist id="pl${i}">${I.readings.map(p => `<option value="${esc(p)}">`).join('')}</datalist></td>
       <td><input data-f="en" class="${cls('en')}" value="${esc(I.en)}"></td>
       <td><input data-f="de" class="${cls('de')}" value="${esc(I.de)}"></td>
+      <td><input data-f="fr" class="${cls('fr')}" value="${esc(I.fr)}"></td>
       <td><button class="reset" title="Wörterbuchwert wiederherstellen">↺</button></td>
     </tr>`;
   }).join('');
@@ -525,6 +529,7 @@ function makeBlock(ch, W) {
   const parts = [];
   if (S.showEN && I.en) parts.push(`<span class="part"><span class="lbl">EN</span>${esc(I.en)}</span>`);
   if (S.showDE && I.de) parts.push(`<span class="part"><span class="lbl">DE</span>${esc(I.de)}</span>`);
+  if (S.showFR && I.fr) parts.push(`<span class="part"><span class="lbl">FR</span>${esc(I.fr)}</span>`);
   if (parts.length) {
     const t = document.createElement('div');
     t.className = 'trans ' + (S.transLayout === 'stacked' ? 'stacked' : 'inline');
